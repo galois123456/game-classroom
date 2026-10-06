@@ -1,0 +1,10 @@
+:root{--bg:#f4f7fb;--card:#fff;--ink:#172033;--muted:#667085;--line:#d9e0ec;--primary:#2563eb;--danger:#b42318;--green:#15803d}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Noto Sans KR",sans-serif}
+.wrap{max-width:1120px;margin:auto;padding:24px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:16px}
+h1,h2,h3{margin-top:0}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+input,select,button{font:inherit;padding:12px;border-radius:10px;border:1px solid var(--line);width:100%}
+button{cursor:pointer;font-weight:800;background:var(--primary);color:#fff;border:0}.secondary{background:#fff;color:var(--ink);border:1px solid var(--line)}.danger{background:var(--danger)}
+.row{display:flex;gap:10px;flex-wrap:wrap}.row>*{flex:1}.muted{color:var(--muted)}.hidden{display:none!important}.pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#eaf1ff;color:#1d4ed8;font-weight:800}
+table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px solid #edf0f5;text-align:left}.game{min-height:150px;display:flex;flex-direction:column}.game button{margin-top:auto}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px}.qr{width:220px;height:220px;display:block;margin:12px auto;background:white}
+@media(max-width:600px){.wrap{padding:12px}.top{align-items:flex-start;flex-direction:column}}

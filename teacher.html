@@ -1,0 +1,12 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>학생 관리</title>
+<link rel="stylesheet" href="css/common.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head><body><div class="wrap">
+<div class="top"><h1>학생 관리</h1><button class="secondary" onclick="location.href='index.html'">게임으로</button></div>
+<section class="card"><p class="muted">학생 비밀번호 원문은 저장하지 않습니다. 학생 삭제 시 해당 교사가 소유한 학생 계정과 연결된 게임 기록이 함께 삭제됩니다.</p>
+<div style="overflow:auto"><table><thead><tr><th>학번</th><th>이름</th><th>최근 접속</th><th>관리</th></tr></thead><tbody id="rows"></tbody></table></div></section></div>
+<script src="js/supabase.js"></script><script>
+async function boot(){const {data:{session}}=await sb.auth.getSession();if(!session){location.href='index.html';return}load()}
+async function load(){const {data,error}=await sb.from('gamehub_students').select('id,student_number,student_name,last_seen_at').order('student_number');if(error){alert(error.message);return}
+rows.innerHTML=(data||[]).map(s=>`<tr><td>${esc(s.student_number)}</td><td>${esc(s.student_name)}</td><td>${s.last_seen_at?new Date(s.last_seen_at).toLocaleString():'-'}</td><td><button class="danger" onclick="del('${s.id}','${esc(s.student_name)}')">삭제</button></td></tr>`).join('')}
+async function del(id,n){if(!confirm(n+' 학생 데이터를 삭제할까요?'))return;const {error}=await sb.from('gamehub_students').delete().eq('id',id);if(error)alert(error.message);else load()}
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}boot();
+</script></body></html>

@@ -1,0 +1,23 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>수학 게임 교실 ver1.00</title><link rel="stylesheet" href="css/common.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head><body><div class="wrap">
+<div class="top"><div><h1>수학 게임 교실 <span class="pill">ver1.00</span></h1><p class="muted">made by yoonsungho</p></div></div>
+<section id="auth" class="card"><h2>교사 로그인</h2><div class="row"><input id="email" type="email" placeholder="이메일"><input id="pw" type="password" placeholder="비밀번호"></div>
+<div class="row" style="margin-top:10px"><button onclick="login()">로그인</button><button class="secondary" onclick="signup()">회원가입</button></div><p id="msg" class="muted"></p></section>
+<section id="dash" class="hidden"><div class="card top"><div><h2>게임 선택</h2><span id="who" class="muted"></span></div><div class="row"><button class="secondary" onclick="location.href='teacher.html'">학생 관리</button><button class="danger" onclick="logout()">로그아웃</button></div></div>
+<div id="games" class="grid"></div></section></div>
+<script src="js/supabase.js"></script><script>
+const GAMES=[
+['streams','📈','오름차순 게임','실시간 학급용 ver1.00'],
+['baseball1v1','⚾','1:1 숫자야구','연결 예정'],
+['baseball_class','🧢','일대다수 숫자야구','연결 예정'],
+['gugudan_rpg','⚔️','구구단 RPG','연결 예정'],
+['arithmetic','➕','사칙연산 게임','연결 예정'],
+['middle_math','🧮','중등수학 기초연산','연결 예정'],
+['elementary_math','✏️','초등학교 기초연산','연결 예정']];
+async function boot(){const {data:{session}}=await sb.auth.getSession(); if(session) show(session.user); const q=new URLSearchParams(location.search); if(q.get('room')) location.href='student.html?room='+encodeURIComponent(q.get('room'))}
+function show(u){auth.classList.add('hidden');dash.classList.remove('hidden');who.textContent=u.email;games.innerHTML=GAMES.map(g=>`<article class="card game"><h2>${g[1]} ${g[2]}</h2><p class="muted">${g[3]}</p><button ${g[0]!=='streams'?'disabled':''} onclick="location.href='games/streams.html'">${g[0]==='streams'?'게임 열기':'준비 중'}</button></article>`).join('')}
+async function login(){let {data,error}=await sb.auth.signInWithPassword({email:email.value,password:pw.value});msg.textContent=error?error.message:'';if(data.user)show(data.user)}
+async function signup(){let {error}=await sb.auth.signUp({email:email.value,password:pw.value});msg.textContent=error?error.message:'회원가입 요청 완료. 이메일 확인 설정에 따라 인증 후 로그인하세요.'}
+async function logout(){await sb.auth.signOut();location.reload()} boot();
+</script></body></html>

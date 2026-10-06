@@ -1,0 +1,14 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>게임 참가</title>
+<link rel="stylesheet" href="css/common.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head><body><div class="wrap" style="max-width:520px">
+<h1>수학 게임 참가</h1><section class="card"><div id="roomInfo" class="pill"></div><p class="muted">QR로 들어온 경우 방 코드는 자동 입력됩니다.</p>
+<input id="room" placeholder="방 코드"><br><br><input id="num" placeholder="학번"><br><br><input id="name" placeholder="이름"><br><br>
+<input id="spw" type="password" placeholder="나의 비밀번호"><br><br><input id="rpw" type="password" placeholder="방 비밀번호"><br><br>
+<button onclick="join()">참가하기</button><p id="msg" class="muted"></p></section></div>
+<script src="js/supabase.js"></script><script>
+const q=new URLSearchParams(location.search);if(q.get('room')){room.value=q.get('room').toUpperCase();room.readOnly=true}roomInfo.textContent=room.value?'방 '+room.value:'방 코드를 입력하세요';
+async function join(){msg.textContent='확인 중...';try{
+ const res=await fetch(APP_CONFIG.SUPABASE_URL+'/functions/v1/student-api',{method:'POST',headers:{'Content-Type':'application/json','apikey':APP_CONFIG.SUPABASE_ANON_KEY},body:JSON.stringify({action:'join',roomCode:room.value,roomPassword:rpw.value,studentNumber:num.value,studentName:name.value,studentPassword:spw.value})});
+ const x=await res.json();if(!res.ok)throw new Error(x.error||'참가 실패');
+ localStorage.setItem('gamehub_student_session',JSON.stringify(x));location.href=x.gameUrl+'?room='+encodeURIComponent(x.roomCode)+'&token='+encodeURIComponent(x.sessionToken);
+}catch(e){msg.textContent=e.message}}
+</script></body></html>

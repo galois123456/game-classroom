@@ -1,0 +1,21 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>오름차순 게임 ver1.00</title>
+<link rel="stylesheet" href="../css/common.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head><body><div class="wrap">
+<div class="top"><div><h1>📈 오름차순 게임 <span class="pill">ver1.00</span></h1><p class="muted">made by yoonsungho</p></div><button class="secondary" onclick="location.href='../index.html'">게임 선택</button></div>
+<section id="host" class="card"><h2>방 만들기</h2><div class="row"><input id="rpw" type="password" placeholder="방 비밀번호"><button onclick="createRoom()">방 만들기</button></div><p id="m" class="muted"></p></section>
+<section id="info" class="card hidden"><h2>초대</h2><div class="grid"><div><p>방 코드</p><h1 id="code"></h1><p>비밀번호</p><h2 id="pass"></h2><p><button onclick="copyLink()">참가 링크 복사</button></p></div><div><img id="qr" class="qr" alt="QR 코드"></div></div>
+<div class="row"><button onclick="draw()">카드 뽑기</button><button class="danger" onclick="endRoom()">방 종료</button></div><h3>현재 카드: <span id="card">-</span></h3><p>진행: <span id="turn">0</span>/20</p></section>
+<section id="playersBox" class="card hidden"><h2>학생 현황</h2><div id="players"></div></section></div>
+<script src="../js/supabase.js"></script><script>
+let roomId=null,roomCode=null,joinUrl=null;
+async function createRoom(){const {data:{session}}=await sb.auth.getSession();if(!session){alert('교사 로그인이 필요합니다.');location.href='../index.html';return}
+const {data,error}=await sb.rpc('streams_create_room',{p_password:rpw.value});if(error){m.textContent=error.message;return}
+roomId=data.id;roomCode=data.room_code;code.textContent=roomCode;pass.textContent=rpw.value;joinUrl=new URL('../student.html',location.href).href+'?room='+encodeURIComponent(roomCode);
+qr.src='https://api.qrserver.com/v1/create-qr-code/?size=300x300&data='+encodeURIComponent(joinUrl);host.classList.add('hidden');info.classList.remove('hidden');playersBox.classList.remove('hidden');subscribe();refresh()}
+async function draw(){const {data,error}=await sb.rpc('streams_draw_card',{p_room_id:roomId});if(error)alert(error.message);else refresh()}
+async function refresh(){if(!roomId)return;const {data:r}=await sb.from('streams_rooms').select('*').eq('id',roomId).single();if(r){card.textContent=r.current_card??'-';turn.textContent=r.current_turn}
+const {data:p}=await sb.from('streams_players').select('student_number,student_name,has_placed,score').eq('room_id',roomId).order('student_number');
+players.innerHTML=(p||[]).map(x=>`<p><b>${x.student_number} ${x.student_name}</b> · <span style="color:${x.has_placed?'#2563eb':'#dc2626'}">${x.has_placed?'완료':'대기'}</span> · ${x.score??0}점</p>`).join('')||'<p class="muted">아직 학생이 없습니다.</p>'}
+function subscribe(){sb.channel('streams-'+roomId).on('postgres_changes',{event:'*',schema:'public',table:'streams_rooms',filter:'id=eq.'+roomId},refresh).on('postgres_changes',{event:'*',schema:'public',table:'streams_players',filter:'room_id=eq.'+roomId},refresh).subscribe()}
+async function endRoom(){if(!confirm('방을 종료할까요?'))return;const {error}=await sb.rpc('streams_end_room',{p_room_id:roomId});if(error)alert(error.message);else location.href='../index.html'}
+function copyLink(){navigator.clipboard.writeText(joinUrl);alert('참가 링크를 복사했습니다.')}
+</script></body></html>
