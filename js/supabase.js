@@ -1,7 +1,4 @@
-// Supabase 프로젝트를 만든 뒤 아래 두 값만 바꾸세요.
-// Project Settings > API
-window.APP_CONFIG = {
-  SUPABASE_URL: 'https://YOUR_PROJECT.supabase.co',
-  SUPABASE_ANON_KEY: 'YOUR_ANON_KEY'
-};
-window.sb = supabase.createClient(APP_CONFIG.SUPABASE_URL, APP_CONFIG.SUPABASE_ANON_KEY);
+// Shared teacher Auth client. The build can generate config.js from public env vars.
+const cfg=window.APP_CONFIG;
+window.configReady=Boolean(cfg && /^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(cfg.SUPABASE_URL) && !cfg.SUPABASE_URL.includes('YOUR_') && !cfg.SUPABASE_ANON_KEY.includes('YOUR_'));
+window.sb = window.configReady && window.supabase ? window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY) : null;

@@ -1,0 +1,3 @@
+project_id = "math-game-classroom"
+[functions.student-api]
+verify_jwt = false

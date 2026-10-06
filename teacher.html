@@ -1,12 +1,4 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>학생 관리</title>
-<link rel="stylesheet" href="css/common.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script></head><body><div class="wrap">
-<div class="top"><h1>학생 관리</h1><button class="secondary" onclick="location.href='index.html'">게임으로</button></div>
-<section class="card"><p class="muted">학생 비밀번호 원문은 저장하지 않습니다. 학생 삭제 시 해당 교사가 소유한 학생 계정과 연결된 게임 기록이 함께 삭제됩니다.</p>
-<div style="overflow:auto"><table><thead><tr><th>학번</th><th>이름</th><th>최근 접속</th><th>관리</th></tr></thead><tbody id="rows"></tbody></table></div></section></div>
-<script src="js/supabase.js"></script><script>
-async function boot(){const {data:{session}}=await sb.auth.getSession();if(!session){location.href='index.html';return}load()}
-async function load(){const {data,error}=await sb.from('gamehub_students').select('id,student_number,student_name,last_seen_at').order('student_number');if(error){alert(error.message);return}
-rows.innerHTML=(data||[]).map(s=>`<tr><td>${esc(s.student_number)}</td><td>${esc(s.student_name)}</td><td>${s.last_seen_at?new Date(s.last_seen_at).toLocaleString():'-'}</td><td><button class="danger" onclick="del('${s.id}','${esc(s.student_name)}')">삭제</button></td></tr>`).join('')}
-async function del(id,n){if(!confirm(n+' 학생 데이터를 삭제할까요?'))return;const {error}=await sb.from('gamehub_students').delete().eq('id',id);if(error)alert(error.message);else load()}
-function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}boot();
-</script></body></html>
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>학생 관리 · 수학 게임 교실</title><link rel="stylesheet" href="css/common.css"></head><body><main class="wrap"><header class="top"><a class="brand" href="index.html">▦ 수학 게임 교실</a><a class="button secondary compact" href="index.html">게임 선택</a></header><p class="eyebrow">CLASSROOM RECORDS</p><h1>학생 관리</h1><p class="muted">내 방에 참가한 학생과 게임 기록입니다. 학생을 삭제하면 연결된 세션과 게임 기록도 함께 삭제됩니다.</p><p id="msg" role="status" class="message"></p><section class="card"><div class="row"><label>학생 검색<input id="search" placeholder="학번 또는 이름"></label><button id="reload" class="secondary compact">새로 고침</button></div><div class="table-scroll"><table><thead><tr><th>학번</th><th>이름</th><th>최근 접속</th><th>관리</th></tr></thead><tbody id="rows"></tbody></table></div></section><section class="card"><h2>최근 게임 기록 <span class="muted small">최대 100건</span></h2><div class="table-scroll"><table><thead><tr><th>학번 · 이름</th><th>게임</th><th>점수</th><th>날짜</th></tr></thead><tbody id="results"></tbody></table></div></section><footer>수학 게임 교실 ver1.01 · made by yoonsungho</footer></main>
+<script src="vendor/supabase-2.117.2.js"></script>
+
+<script src="js/config.js"></script><script src="js/supabase.js"></script><script type="module" src="js/teacher.js"></script></body></html>

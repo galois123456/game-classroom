@@ -1,0 +1,11 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {createDeck,evaluate,snakePosition,competitionRanks,POINTS} from '../js/games/streams-rules.js';
+const board=(...values)=>[...values,...Array(20-values.length).fill(null)];
+test('40-card multiset exactly matches requested distribution',()=>{const d=createDeck();assert.equal(d.length,40);for(let n=1;n<=30;n++)assert.equal(d.filter(v=>v===String(n)).length,n>=11&&n<=19?2:1);assert.equal(d.filter(v=>v==='★').length,1);});
+test('snake numbering follows right/left/right/left and has 20 unique cells',()=>{assert.deepEqual([0,4,5,9,10,14,15,19].map(snakePosition),[{row:1,col:1},{row:1,col:5},{row:2,col:5},{row:2,col:1},{row:3,col:1},{row:3,col:5},{row:4,col:5},{row:4,col:1}]);assert.equal(new Set(Array.from({length:20},(_,i)=>JSON.stringify(snakePosition(i)))).size,20);});
+test('empty board scores zero; increasing 20 scores 300',()=>{assert.equal(evaluate(board()).score,0);assert.equal(evaluate(Array.from({length:20},(_,i)=>String(i+1))).score,300);});
+test('each run length uses the explicit scoring table',()=>{for(let n=1;n<=20;n++)assert.equal(evaluate(board(...Array.from({length:n},(_,i)=>String(i+1)))).score,POINTS[n]);});
+test('equal numbers connect; decreases split; empty cells split',()=>{assert.equal(evaluate(board('11','11','12')).score,3);assert.equal(evaluate(board('1','2','3','1','2')).score,4);assert.equal(evaluate(board('1',null,'2')).score,0);assert.equal(evaluate(Array.from({length:20},(_,i)=>String(30-i))).score,0);});
+test('star is optimized without bridging an impossible descent',()=>{assert.equal(evaluate(board('1','★','3')).score,3);assert.equal(evaluate(board('30','★','1')).score,1);assert.equal(evaluate(board('★','1','2')).score,3);assert.equal(evaluate(board('28','29','★')).score,3);assert.equal(evaluate(board('1','★','3','4','5')).starValue,1);});
+test('tied players have competition ranks 1,1,3',()=>assert.deepEqual(competitionRanks([{score:5},{score:9},{score:9}]).map(x=>x.rank),[1,1,3]));
+test('invalid board/card rejected',()=>{assert.throws(()=>evaluate([]));assert.throws(()=>evaluate(board('31')));assert.throws(()=>evaluate(board('★','★')));});
