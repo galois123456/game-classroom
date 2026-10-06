@@ -9,3 +9,4 @@ test('equal numbers connect; decreases split; empty cells split',()=>{assert.equ
 test('star is optimized without bridging an impossible descent',()=>{assert.equal(evaluate(board('1','★','3')).score,3);assert.equal(evaluate(board('30','★','1')).score,1);assert.equal(evaluate(board('★','1','2')).score,3);assert.equal(evaluate(board('28','29','★')).score,3);assert.equal(evaluate(board('1','★','3','4','5')).starValue,1);});
 test('tied players have competition ranks 1,1,3',()=>assert.deepEqual(competitionRanks([{score:5},{score:9},{score:9}]).map(x=>x.rank),[1,1,3]));
 test('invalid board/card rejected',()=>{assert.throws(()=>evaluate([]));assert.throws(()=>evaluate(board('31')));assert.throws(()=>evaluate(board('★','★')));});
+
