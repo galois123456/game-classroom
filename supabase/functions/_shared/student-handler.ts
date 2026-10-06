@@ -57,6 +57,23 @@ export function createStudentHandler(env: Environment, fetcher: typeof fetch = f
         const data=await rpc('streams_join',{p_code:code,p_room_password:b.roomPassword,p_number:number,p_name:name,p_password:b.studentPassword});
         return respond(data);
       }
+      if(action==='game_join') {
+        const game=String(b.gameKey||'');
+        if(!['baseball1v1','baseball_class','arithmetic'].includes(game)||!['roomCode','roomPassword','studentNumber','studentName','studentPassword'].every(k=>typeof b[k]==='string')) return respond({error:'참가 정보를 모두 입력하세요.'},400);
+        const code=b.roomCode.trim().toUpperCase(),number=b.studentNumber.trim(),name=b.studentName.trim();
+        if(!/^[A-Z0-9]{6,8}$/.test(code)||!/^[-_A-Za-z0-9]{1,24}$/.test(number)||name.length<1||name.length>40||b.studentPassword.length<4||new TextEncoder().encode(b.studentPassword).length>72||new TextEncoder().encode(b.roomPassword).length>72) return respond({error:'학번·이름·비밀번호 형식을 확인하세요.'},400);
+        await limit(`join-room:${game}:${code}`,240,300);
+        await limit(`join-student:${game}:${await digest(code+':'+number)}`,12,300);
+        return respond(await rpc('gamehub_join_game',{p_game:game,p_code:code,p_room_password:b.roomPassword,p_number:number,p_name:name,p_password:b.studentPassword}));
+      }
+      if(action==='game') {
+        const game=String(b.gameKey||''),gameAction=String(b.gameAction||'');
+        if(!['baseball1v1','baseball_class','arithmetic'].includes(game)||!['state','leave','set_secret','guess','answer'].includes(gameAction)||!b.data||typeof b.data!=='object'||Array.isArray(b.data)) return respond({error:'요청 형식을 확인하세요.'},400);
+        if(typeof b.sessionToken!=='string'||!/^[a-f0-9]{64}$/.test(b.sessionToken)) return respond({error:'다시 참가해 주세요.',code:'SESSION_EXPIRED'},401);
+        if((game==='baseball1v1'&&!['state','leave','set_secret','guess'].includes(gameAction))||(game==='baseball_class'&&!['state','leave','guess'].includes(gameAction))||(game==='arithmetic'&&!['state','leave','answer'].includes(gameAction))) return respond({error:'지원하지 않는 요청입니다.'},400);
+        await limit(`session:${await digest(b.sessionToken)}`,100,60);
+        return respond(await rpc('gamehub_student_game_command',{p_game:game,p_action:gameAction,p_token:b.sessionToken,p_data:b.data}));
+      }
       if(!['state','place','logout'].includes(action)) return respond({error:'지원하지 않는 요청입니다.'},400);
       if(typeof b.sessionToken!=='string'||!/^[a-f0-9]{64}$/.test(b.sessionToken)) return respond({error:'다시 참가해 주세요.',code:'SESSION_EXPIRED'},401);
       if(action==='place'&&(!Number.isInteger(b.turn)||b.turn<1||b.turn>20||!Number.isInteger(b.slot)||b.slot<0||b.slot>19)) return respond({error:'잘못된 카드 배치입니다.'},400);
