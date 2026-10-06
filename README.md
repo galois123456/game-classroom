@@ -1,102 +1,131 @@
-# 검토·수정·검증 보고서
+# 수학 게임 교실 ver1.01
 
-대상: 첨부 `math-game-classroom-ver1.00-fixed(1).zip` 전체 11개 파일 및 후속 Vercel 접근성/화면 배치 수정.
-결과: 플랫폼 ver1.01 / 오름차순 게임 ver1.00.
+교사는 Supabase Auth로 로그인하고, 학생은 계정 없이 방 코드와 비밀번호로 참가하는 수학 게임 플랫폼입니다. 현재 완성 게임은 **오름차순 게임 ver1.00**입니다. 다음 배포는 `GitHub → Vercel`, 데이터와 인증은 `Supabase`를 사용합니다.
 
-## 원본에서 확인한 문제와 수정
+## 필요한 계정과 파일
 
-| 원본 문제 | 수정 |
+- GitHub 계정, Supabase 계정, Vercel 계정
+- 이 프로젝트 파일 전체
+- Supabase 프로젝트의 Project URL과 Publishable key(또는 legacy anon key)
+- 교사 계정으로 쓸 이메일 주소
+
+`service_role` 또는 `sb_secret_` 키는 브라우저용이 아닙니다. Vercel 환경변수나 HTML 파일에 넣지 마세요.
+
+## 1. Supabase 프로젝트 만들기와 데이터베이스 준비
+
+1. Supabase에서 새 프로젝트를 만들고 데이터베이스 비밀번호를 안전하게 보관합니다.
+2. 왼쪽 메뉴 **SQL Editor → New query**를 엽니다.
+3. 이 저장소의 `supabase/schema.sql` 전체를 붙여 넣고 **Run**을 누릅니다.
+4. 오류 없이 실행되면 `public` 스키마에 `gamehub_` 공통 테이블과 `streams_` 게임 테이블이 생깁니다. SQL은 기존 행을 지우지 않고 재실행할 수 있게 작성되어 있습니다.
+
+## 2. 교사 이메일 승인과 로그인 설정
+
+학생은 Auth 계정을 만들지 않습니다. 교사만 회원가입할 수 있으며, 가입할 교사 이메일을 먼저 허용 목록에 등록해야 합니다. SQL Editor에서 아래 예시 이메일을 실제 주소로 바꿔 실행하세요.
+
+```sql
+insert into public.gamehub_teacher_allowlist(email, enabled)
+values ('teacher@school.kr', true)
+on conflict (email) do update set enabled = true;
+```
+
+가입 허용을 자동으로 적용하려면 Supabase의 **Authentication → Hooks → Before User Created**에서 `public.gamehub_before_user_created` 함수를 연결합니다. 가입 승인용 이메일 목록과 로그인 때의 교사 권한 검사를 모두 사용하므로, 이 Hook을 설정하고 이메일 인증도 켜 두세요. **Authentication → URL Configuration**에서 Site URL과 Redirect URLs에 Production 주소를 등록합니다(예: `https://game-classroom-jade.vercel.app/**`).
+
+SMTP를 따로 설정하지 않았다면 인증 메일 전송 횟수나 수신 주소에 Supabase 기본 제한이 적용될 수 있습니다. 먼저 가입·인증 메일·로그인을 직접 확인하세요.
+
+## 3. 학생 API Edge Function 배포
+
+터미널에서 프로젝트 폴더로 이동한 후, Supabase 프로젝트를 연결하고 함수를 배포합니다. `<PROJECT_REF>`는 Supabase 프로젝트 URL의 `https://<PROJECT_REF>.supabase.co` 부분입니다.
+
+```bash
+npx supabase login
+npx supabase link --project-ref <PROJECT_REF>
+npx supabase functions deploy student-api --no-verify-jwt
+```
+
+`--no-verify-jwt`는 학생이 Supabase 계정 없이 호출하는 이 함수에만 사용합니다. 함수 내부에서 방 비밀번호, 개인 비밀번호, 세션, 요청 제한을 검사합니다. 서비스 키는 함수 서버 환경에만 두고 브라우저에 배포하지 않습니다.
+
+## 4. GitHub에 올리기
+
+1. GitHub에서 새 저장소를 만듭니다. 공개 저장소로 올려도 비밀값은 코드에 없고, `.env` 파일은 `.gitignore`에 제외되어야 합니다.
+2. 프로젝트 폴더에서 GitHub 안내에 따라 파일을 커밋·푸시합니다. Git 명령을 사용할 경우:
+
+```bash
+git init
+git add .
+git commit -m "수학 게임 교실 배포"
+git branch -M main
+git remote add origin https://github.com/<계정>/<저장소>.git
+git push -u origin main
+```
+
+이미 Git 저장소인 프로젝트에서는 `git init`과 `git remote add`를 다시 하지 말고, 수정 파일을 커밋해 푸시하면 됩니다.
+
+## 5. Vercel 배포
+
+1. Vercel에서 **Add New → Project**를 누르고 방금 만든 GitHub 저장소를 가져옵니다.
+2. Framework Preset은 **Other**로 둡니다. Build Command는 `npm run build`, Output Directory는 `dist`입니다. 저장소의 `vercel.json`이 이 값을 지정합니다.
+3. Project Settings → Environment Variables에서 다음 값을 Production 환경에 추가합니다.
+
+| 이름 | 값 |
 |---|---|
-| 학생 화면이 안내 문구뿐이고 실제 게임 없음 | 20칸 뱀 보드·확정 배치·★·구간 점수·최종 순위 구현 |
-| 임의 토큰을 발급만 하고 저장·검증·만료하지 않음 | 256비트 난수 토큰, DB SHA-256 해시, 방 범위 검증·12시간 만료·재참가 시 회전 |
-| 토큰을 localStorage와 URL에 보관 | 현재 탭 sessionStorage만 사용, URL 토큰 제거 |
-| Auth 가입자 전체를 사실상 교사로 취급 | 승인 이메일 + 인증 완료 + SQL 권한 확인, 가입 제한 Auth Hook 제공 |
-| 카드 뽑기·종료·배치의 상태 검증 부재 | 방 행 잠금으로 모든 게임 변경을 직렬화, 서버 카드/턴/점수 사용 |
-| 전원 배치 전에 다음 카드 진행 가능 | 활성 학생 전원이 확정할 때만 다음 턴 가능 |
-| RPC PUBLIC 실행권한 기본 허용 | 앱 내부 RPC를 anon/authenticated에서 회수, 역할별 명시 허용 |
-| 방 해시와 전체 덱 조회 가능 | 브라우저 열 권한 제한, DTO에 공개된 상태만 포함 |
-| 학생 이름을 HTML/인라인 이벤트 문자열에 삽입 | textContent 및 addEventListener 사용, CSP 추가 |
-| 정책·publication 재등록으로 SQL 재실행 오류 | 트랜잭션·정책 교체·publication 존재 검사, 반복 실행 검증 |
-| 회원가입/로그인만 있고 승인·인증 복귀 설명 부족 | 승인/Hook/SMTP/Redirect URL/비밀번호 재설정 안내 및 UI |
-| 재참가 시 player upsert와 무검사 응답 | 기존 보드 불변·동일 신원 검증·세션만 회전, 모든 오류 확인 |
-| QR 외부 생성 서비스에 참가 URL 전송 | 로컬 QR 생성, 포함 라이브러리 버전 고정 |
-| QR이 Vercel 보호된 임시 배포 주소를 사용 가능 | VERCEL_PROJECT_PRODUCTION_URL을 빌드 설정에 넣어 Production 주소를 사용, 보호 설정별 조치 안내 |
-| 상단 메뉴의 글자/버튼 줄바꿈 및 조작 버튼 간격 불량 | 반응형 상단 탐색과 방 조작부 CSS 정리 |
-| 빌드/배포 설정·초보자 안내 부족 | dist 화이트리스트 빌드·vercel.json·상세 README |
-| 실패 요청/요청 크기 제한 없음 | DB 영속 요청 제한·4096바이트 본문 제한·입력 검사·정확한 Origin 허용 |
+| `PUBLIC_SUPABASE_URL` | Supabase Project URL |
+| `PUBLIC_SUPABASE_ANON_KEY` | Supabase Publishable key 또는 legacy anon key |
+| `PUBLIC_APP_URL` | 선택 사항. 고정된 Production origin, 예: `https://game-classroom-jade.vercel.app` |
 
-원본의 교사 인증, 게임 메뉴, 학생 관리, 방 생성, QR, Realtime 기능은 유지/보강했습니다. Realtime은 민감한 원본 테이블 대신 변경 번호만 구독합니다. 미완성 후속 게임 메뉴도 유지했습니다.
+`PUBLIC_APP_URL`은 도메인만 입력합니다. `/student.html` 같은 경로를 붙이지 마세요. 입력 후 Deploy하거나 변경사항을 재배포합니다. 학생 페이지(`/student.html`)가 로그인 없이 열리는지 시크릿 창에서 확인합니다.
 
-## 실제로 수행한 자동 검사
+4. **Deployment Protection**이 켜져 있으면 학생에게 Vercel 로그인을 요구할 수 있습니다. Preview 배포는 보호하고 Production 도메인은 공개하도록 설정하세요. QR에는 Production 주소만 사용합니다.
 
-### 기본 검사 21개
+## 6. Supabase가 Production 사이트를 허용하도록 설정
 
-`npm run build && npm test`
+Supabase Edge Function Secrets에 `ALLOWED_ORIGINS`를 추가해야 QR 참가가 작동합니다. Vercel 주소가 `https://game-classroom-jade.vercel.app`이라면 값도 정확히 그 주소여야 합니다.
 
-- 덱 장수와 숫자별 개수, 뱀 번호와 좌표
-- 빈 보드·감소·동일 숫자·빈칸·1~20칸 점수
-- ★의 최적화와 불가능한 감소 연결 방지
-- 공동 순위
-- Edge 허용 Origin, preflight, 요청 제한, 입력·토큰·크기 검사
-- 배치 시 클라이언트가 보낸 점수/카드/학생 ID가 RPC에 전달되지 않음
-- 모든 HTML 리소스 경로, 인라인 이벤트 부재, 안전한 배포 출력
-- Vercel QR 기본 Production 도메인 선택과 사용자 지정 도메인 검증
+Supabase 대시보드에서 **Edge Functions → Secrets**로 이동해 다음을 추가하고 저장합니다.
 
-### PostgreSQL 통합 검사 21개
+- Key: `ALLOWED_ORIGINS`
+- Value: `https://game-classroom-jade.vercel.app`
 
-`node tests/database.mjs` — PGlite 0.5.8 + 실제 pgcrypto 확장 사용.
+주소 끝에 `/student.html`이나 `/`를 붙이지 마세요. 커스텀 도메인도 함께 쓰면 쉼표로 구분합니다. 예: `https://game-classroom-jade.vercel.app,https://math.example.com`.
 
-- 원본 SQL 신규 실행 후 업데이트, 신규 업데이트 SQL 실행, 두 번 실행
-- 실제 bcrypt 해시와 SHA-256 세션 저장
-- PostgreSQL 역할 전환으로 anon/authenticated/service_role 동작 검증
-- 승인 없는 사용자·다른 교사의 데이터 접근/변경 차단
-- 브라우저에서 해시/덱 직접 조회 및 원본 테이블 수정 차단
-- 학생 상태에서 타인의 이름·보드와 덱 미노출
-- 잘못된 비밀번호, 시작 후 신규 참가, 잘못된 턴/칸, 이중 배치 거부
-- 정확히 같은 요청 재시도의 멱등성
-- 재참가 토큰 회전과 보드 보존
-- 두 학생 20턴 완료, 자동 종료, 동점, 결과 중복 방지
-- SQL/JS 채점 결과 80개 보드 일치 + 수기 기대값 확인
-- 세션 만료·교사 권한 회수·교사 간 삭제 격리
-- 학생/방 삭제 시 세션·결과 연쇄 삭제
-- 요청 제한 임계값/시간창
-- 기존 학생 행 보존
+명령줄에서는 다음과 같이 설정할 수 있습니다.
 
-### 브라우저 통합 검사
+```bash
+npx supabase secrets set ALLOWED_ORIGINS=https://game-classroom-jade.vercel.app --project-ref <PROJECT_REF>
+```
 
-`node tests/browser.mjs` — 실제 Chromium, 실제 앱 JS와 Edge 핸들러, 실제 PGlite SQL.
+이 값은 Supabase의 서버 비밀값입니다. Vercel 환경변수에는 넣지 마세요. 비밀값을 저장하면 보통 함수 재배포 없이 적용됩니다. 새 주소를 사용하도록 교사 페이지도 최신 Production 배포인지 확인하고, 방을 새로 만들어 새 QR을 생성하세요.
 
-교사 인증 세션과 Supabase HTTP/Realtime 전송 계층은 테스트 어댑터로 대체합니다. 라이브 Supabase 연동 검사와 혼동하지 마세요.
+## 7. 학생 참가와 게임 시작
 
-- 교사 대시보드 7개 메뉴, 방 생성과 QR/링크
-- 모바일 390px 학생 참가와 QR 코드 자동 입력
-- HTML처럼 생긴 학생 이름을 코드가 아닌 텍스트로 표시
-- 20번 실제 칸 선택·확정, 매 턴 새로고침 복구
-- ★ 포함 20칸 오름차순 300점, 최종 순위
-- 학생 삭제 후 기존 학생 세션의 접근 거부
-- PC/모바일 가로 넘침 없음, 페이지 JavaScript 오류 없음
+1. 교사가 공개 Production 사이트에서 로그인하고 오름차순 게임 방을 만듭니다.
+2. 방 비밀번호를 정하고 QR 또는 참가 링크를 학생에게 공유합니다. 비밀번호는 별도로 알려 줍니다.
+3. 학생은 QR을 열고 학번, 이름, 본인 비밀번호, 방 비밀번호를 입력합니다. QR 링크에는 방 코드가 자동 입력됩니다.
+4. 학생 전원이 참가하면 교사가 게임을 시작합니다. 매 턴 학생은 카드를 보드 빈칸에 한 번 확정하고, 모두 배치한 뒤 교사가 다음 카드를 뽑습니다.
+5. 20턴 뒤 점수와 순위가 표시됩니다. 교사는 학생 관리에서 학생 계정과 해당 학생의 기록을 삭제할 수 있습니다.
 
-Edge 핸들러는 TypeScript strict 타입 검사를 통과했습니다.
+## 오류 해결: “서버에 연결할 수 없습니다”
 
-## 검증의 한계 / 실제 배포 후 확인할 항목
+학생 화면은 열리지만 참가하기 후 이 오류가 나오면 Edge Function `ALLOWED_ORIGINS` 값이 실제 사이트와 다른지 확인하세요. 이 오류 문구에는 참가를 시도한 정확한 주소가 표시됩니다. 그 주소를 Supabase **Edge Functions → Secrets**의 `ALLOWED_ORIGINS` Value와 일치시켜 저장한 다음 학생 페이지를 새로고침하세요. 이 값은 `https://`를 포함하고 경로와 마지막 `/`는 빼야 합니다.
 
-**사용자 소유 Supabase/Vercel 자격 증명이 제공되지 않았으므로 실제 계정에 배포하거나 운영 서비스에서 인증 메일·Realtime·CORS를 확인하지는 않았습니다.**
+예를 들어 화면 주소가 `https://game-classroom-jade.vercel.app`이면 허용 목록에도 `https://game-classroom-jade.vercel.app`을 넣습니다. 주소가 바뀌거나 Preview 주소로 참가하면 다시 허용 목록 문제를 만날 수 있으니 Production 링크로 새 QR을 만드세요. 그래도 실패하면 Supabase의 **Edge Functions → student-api → Logs**에서 함수 오류를 확인하고, Vercel 배포 로그에서 빌드가 성공했는지 확인합니다. 서비스 비밀 키를 공유하거나 스크린샷에 노출하지 마세요.
 
-PGlite는 실제 PostgreSQL SQL/역할/RLS/pgcrypto를 실행하지만 단일 프로세스 환경입니다. 다중 연결의 잠금 경쟁과 교실 60명 동시 부하 시험은 별도로 필요합니다. 코드에는 방 행 잠금·고유 제약·턴 검사가 있으나 이를 대규모 동시성 부하 검증으로 표현하지 않습니다.
+## 개발·테스트
 
-첫 수업 전 다음을 확인하세요.
+Node.js 22 이상이 필요합니다.
 
-1. 승인 교사 가입 → 인증 메일 → 로그인, 비승인 가입 거부.
-2. 다른 교사 계정에서 기존 교사 방/학생/결과를 볼 수 없음.
-3. 스마트폰 2대와 교사 PC로 QR 참가 → 같은 카드 → 배치 → 다음 턴.
-4. 강제 새로고침, 재참가, 접속 끊김, 학생 참가 종료.
-5. 20턴 종료 후 점수/순위/결과, 학생 삭제 후 데이터 제거.
-6. Supabase Realtime과 Edge Logs에 설정 오류가 없는지, 함수 호출량 확인.
+```bash
+npm run build
+npm test
+npm run dev
+```
 
-## 남겨 둔 운영 선택
+`npm run build`는 `dist/`에 정적 배포 파일을 만듭니다. Supabase 값이 설정되지 않은 로컬 빌드는 안내용 placeholder를 사용하므로 실제 참가·로그인은 되지 않습니다. 브라우저 통합 및 SQL 통합 검사 방법과 한계는 [docs/AUDIT.md](docs/AUDIT.md)를 참고하세요.
 
-- 학생 개인정보는 교사별로 분리하고 학생 사이에는 익명 순위를 사용합니다.
-- 비밀번호 초기화 UI는 별도 구현하지 않았습니다. 삭제 후 재등록 시 기록도 삭제되는 점을 README에 설명했습니다.
-- ★는 1~30의 최적값으로 정의했습니다. 첨부 원본에는 상세 규칙이 없었으므로 이 기준은 명시적 구현 선택입니다.
-- 별도 후속 게임 플레이는 구현하지 않았고 확장 구조와 메뉴만 유지했습니다.
-- 요청 제한은 기본 방어입니다. 분산 공격/WAF, 비용 상한, 법적 개인정보 준수 인증을 보장하는 기능은 아닙니다.
+## 데이터와 보안 개요
+
+- 교사 계정은 Supabase Auth, 허용 이메일 목록, 이메일 인증과 교사 RPC 권한으로 제한합니다.
+- 학생은 회원가입하지 않습니다. 개인 비밀번호와 방 비밀번호의 평문은 DB에 저장하지 않습니다.
+- 학생 API는 Supabase Edge Function을 거치며, 데이터 변경은 서버 RPC에서 방·턴·세션을 다시 검증합니다.
+- 공통 데이터는 `gamehub_`, 오름차순 게임 전용 데이터는 `streams_` 접두사를 사용합니다.
+- 점수는 20칸 보드의 끊기지 않은 비감소 연속 구간 점수 합으로 계산합니다. ★는 1~30 중 점수가 가장 커지는 값으로 판정합니다.
+- 후속 게임 메뉴와 공통 게임 레지스트리는 유지되어 있으며, 다른 게임의 실제 플레이는 아직 구현되지 않았습니다.
